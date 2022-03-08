@@ -1,0 +1,8 @@
+---
+- name: Post Install set up of devops user
+  command: "{{ item }}"
+  with_items: 
+       - usermod -a -G jira devops
+       - usermod -a -G nexus devops
+       - usermod -a -G sonar devops
+       - usermod -a -G postgres devops

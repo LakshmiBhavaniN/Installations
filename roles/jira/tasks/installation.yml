@@ -1,0 +1,57 @@
+---
+#- name: jira groups
+#  group: name={{ jira_user_group }}
+
+#- name: Default JIRA user and home
+#  user: name={{ jira_user }} shell=/bin/bash group={{ jira_user_group }} 
+  
+#- name: Check the home path exists or not 
+#  stat:
+#      path: /var/atalssian/application-data/jira
+#  register: file_details
+
+- name: Create response.varfile for Jira quiet installation
+  template:
+    src: response.varfile.j2
+    dest: "{{ atlassian_root }}/response.varfile"
+ # when: file_details.stat.exists == false
+
+- name: Installation of Jira
+  command: "/opt/{{ jira_extract }} -q -varfile response.varfile"
+ # when: file_details.stat.exists == false
+
+#- name: change user group for /opt
+#  command: chown -R jira:jira /opt/atlassian 
+
+#- name:  change user group for /opt
+#  command: chown -R jira:jira /opt/{{ jira_extract }}
+
+- name: Get Jira to make use of java 11 by modifying
+  lineinfile:
+       dest: /opt/atlassian/jira/bin/setenv.sh
+       regexp: "{{ item.From }}"
+       line: "{{ item.To }}"
+  with_items:
+       - {From: '^JAVA_HOME="/opt/atlassian/jira/jre/"; export JAVA_HOME', To: 'JAVA_HOME="/usr/lib/jvm/jre-11/"; export JAVA_HOME'}
+       - {From: '^JVM_EXTRA_ARGS="-XX:-OmitStackTraceInFastThrow -Djava.locale.providers=COMPAT"', To: 'JVM_EXTRA_ARGS="-XX:-OmitStackTraceInFastThrow -Djava.locale.providers=COMPAT -server"'}  
+
+- name: modify logging properties in jira
+  blockinfile:
+        dest: /opt/atlassian/jira/atlassian-jira/WEB-INF/classes/log4j.properties
+        insertbefore: '# CLASS-SPECIFIC LOGGING LEVELS'
+        block: |
+           ##########################
+           # rmf groovy script log appender
+           log4j.appender.groovylog=com.atlassian.jira.logging.JiraHomeAppender
+           log4j.appender.groovylog.File=rmf.log
+           log4j.appender.groovylog.MaxFileSize=20480KB
+           log4j.appender.groovylog.MaxBackupIndex=5
+           log4j.appender.groovylog.layout=com.atlassian.logging.log4j.NewLineIndentingFilteringPatternLayout
+           log4j.appender.groovylog.layout.ConversionPattern=%d %p %X{jira.username} %c %m%n
+           log4j.logger.rmf = TRACE, console, groovylog
+           log4j.logger.rmf.rel.c = WARN, console, groovylog
+           log4j.logger.rmf.app.c = WARN, console, groovylog
+           log4j.additivity.rmf = false
+           ##########################
+
+

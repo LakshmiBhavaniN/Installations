@@ -1,0 +1,4 @@
+---
+- name: Restart Jira
+  shell: /etc/init.d/jira stop:/etc/init.d/jira start
+ 

@@ -1,0 +1,33 @@
+---
+- name: Install packges
+  yum:  
+    name: "{{ item }}"
+    state: present
+  with_items:
+         - curl
+         - openssl
+         - postfix
+         - openssh-server
+  register: packages_installed
+
+- name: Create volumes for gitlab 
+  docker_volume:
+     name: "{{ item }}"
+     state: present
+  with_items:
+       - gitlab_conf
+       - gitlab_logs
+       - gitlab_data
+- name: Install Gitlab container
+  docker_container:
+         name: gitlab
+         image: gitlab/gitlab-ee:latest  
+         state: started
+         restart_policy: always
+         ports:
+           - "8085:80"
+         volumes:
+           - "gitlab_conf:/etc/gitlab"
+           - "gitlab_logs:/var/log/gitlab"
+           - "gitlab_data:/var/opt/gitlab"
+         

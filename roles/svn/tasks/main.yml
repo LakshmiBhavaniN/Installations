@@ -1,0 +1,128 @@
+---
+- name: Create a repo file
+  file: path=/etc/yum.repos.d/wandisco-svn.repo state=touch
+
+- name: Add a content to  a repo file
+  lineinfile:
+       dest: /etc/yum.repos.d/wandisco-svn.repo
+       line: |
+          [WandiscoSVN]
+          name=Wandisco SVN Repo
+          baseurl=http://opensource.wandisco.com/centos/$releasever/svn-1.10/RPMS/$basearch/
+          enabled=1
+          gpgcheck=0
+  register: repo_d
+    
+- name: Install svn 
+  yum:   
+     name: "{{ svn_packages }}"
+     state: present
+   
+
+#- name: Remove Apache's default welcome page
+ # command: sed -i 's/^/#&/g' /etc/httpd/conf.d/welcome.conf      
+
+- name: Prevent Apache from displaying files in the "/var/www/html" directory
+  command: sed -i "s/Options Indexes FollowSymLinks/Options FollowSymLinks/" /etc/httpd/conf/httpd.conf
+ 
+
+- name: Create svn home folder 
+  file:
+     path: "{{ svn_repository_home }}"
+     state: directory
+     
+
+- name: Copy subversion configuration file
+  template:  
+         src: "subversion.conf.j2"
+         dest: "{{ svn_apache_conf_path }}/subversion.conf"
+         owner: root
+         group: root
+  notify: restart httpd            
+
+- name: Create a repository
+  command: >
+       svnadmin create repo
+       chdir={{ svn_repository_home }}
+       creates={{ svn_repository_home }}/repo
+# when: svn_create_repo
+
+- name: Set owner ship for svn directories
+  file:
+     path: "{{ svn_repository_home }}"
+     owner: "{{ svn_apache_user }}"
+     group: "{{ svn_apache_user}}"
+     recurse: true
+  notify: restart httpd 
+      
+- name: Create httpd.service script
+  template:
+       src: "../templates/httpd.service"
+       dest: "/lib/systemd/system/httpd.service"
+       mode: 0644
+  register: httpd_service
+
+- name: Create First User
+  file:
+     path: /etc/svn
+     state: directory   
+  register: file
+
+- name: Create svn-auth
+  file: path=/etc/svn/svn-auth state=touch
+     
+- name: Add user to a password
+  htpasswd:
+        path: /etc/svn/svn-auth
+        name: devops
+        password: 'devops'
+        owner: root
+        group: root
+        mode: 0644
+       #when: file.exists == true
+
+- name: Set group permissions for the repo
+  blockinfile: 
+         dest: /svn/repo/conf/authz
+         insertbefore: '# [/foo/bar]'
+         block: |
+              [groups] 
+              writer = devops
+              reader =admin
+ 
+- name: Set path based permissions
+  blockinfile:
+        dest: /svn/repo/conf/authz
+        block: |
+             [/]
+             * = r
+             @writer = rw
+             admin = 
+      
+             [repo:/README.md]
+             devops = rw
+             admin =
+ 
+#- name: Harden the svn
+#  lineinfile:
+#          dest: /svn/repo/conf/svnserve.conf
+#          regexp: "{{ item.From }}"
+#          line: "{{ item.To }}"
+#  with_items:
+#         - { From: '^#anon-access = read', To: 'anon-access = none' }
+#         - { From: '^#auth-access = wite', To: 'auth-access = authz' }
+#  register: result 
+     
+- name: SELinux security stuff
+  command: chown -R apache:apache /svn
+- name: SELinux security stuff
+  command: chcon -R -t httpd_sys_content_t /svn       
+- name: Security stuff
+  command: chcon -R -t httpd_sys_rw_content_t /svn/repo
+
+
+     
+
+
+
+

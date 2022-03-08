@@ -1,0 +1,56 @@
+---
+- name: Install nginx
+  yum:
+     name: nginx
+     state: present
+
+- name: start  nginx
+  service: 
+        name: nginx
+        state: started
+        enabled: yes
+  register: nginx_status
+ 
+- name: wait for status
+  wait_for_connection:
+    delay: 75
+ 
+    
+- name: Set up self-signed SSL certificate, if the user did not provide one
+  when: web_server_ssl_cert is not defined
+  block: 
+    
+      - name: Setup self signed certificate
+        command: >
+           openssl req -new -nodes -x509 -subj '/CN=l1dx' -out /etc/nginx/server.crt -keyout /etc/nginx/server.key
+                    
+           
+      
+      - name: slurp self-signed SSL certificate
+        slurp:
+           src: /etc/nginx/server.crt
+        register: server_crt
+           
+
+      - name: slurp self-signed SSL key
+        slurp:
+            src: /etc/nginx/server.key
+        register: server_key
+           
+     
+- name: Insert Index Page
+  template:
+         src: index.html.j2
+         dest: /usr/share/nginx/html/index.html
+  register: Index_change
+
+- name: Insert conf page
+  template: 
+       src: nginx.conf.j2
+       dest: /etc/nginx/nginx.conf
+  register: conf_change
+
+- name: Reload nginx
+  command: nginx -s reload
+           
+

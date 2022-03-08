@@ -1,0 +1,4 @@
+# dafault values
+
+svn_repository_home: /svn
+svn_create_test_repo: true

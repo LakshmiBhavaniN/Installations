@@ -1,0 +1,4 @@
+---
+- import_tasks: preperation.yml
+- include_tasks: installation.yml
+

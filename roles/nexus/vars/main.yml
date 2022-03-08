@@ -1,0 +1,3 @@
+nexus_installation_dir: '/opt'
+nexus_url: 'https://download.sonatype.com/nexus/3/latest-unix.tar.gz'
+nexus_download_dir: '/tmp'

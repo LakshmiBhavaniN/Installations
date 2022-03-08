@@ -1,0 +1,50 @@
+---
+- name: create "sonar" group
+  group: name=sonar 
+  
+- name: create "sonar" user
+  user: name=sonar group=sonar 
+
+- name: Ensure  unzip is installed
+  package: name=unzip state=present
+- name: Check the home path exists or not 
+  stat:
+      path: "{{ scanner_dir }}"
+  register: file_details
+
+    
+- name: Download and extract sonar-scanner
+  unarchive:
+        src: "{{ scanner_url }}"
+        dest: "{{ workspace }}"
+        remote_src: yes
+  register: scanner_download
+  when: file_details.stat.exists == false
+
+- name: Change user and group for sonnar-scanner
+  command: chown -R sonar:sonar {{ scanner_dir }}
+- name: Create symlink
+  file:
+     src: "{{ scanner_dir }}"
+     dest: /opt/sonarscanner
+     state: link
+- name: change user group to symlink
+  command: chown -R -h sonar:sonar /opt/sonarscanner
+    
+- name:  Modify sonar-scanner file
+  lineinfile: 
+        dest: "{{ scanner_dir }}/bin/sonar-scanner"
+        regexp: ^use_embedded_jre=true
+        line: use_embedded_jre=false
+  register: config_changed
+
+- name: Create the .sh file to save the path
+  file: path=/etc/profile.d/sonnarscanner.sh state=touch
+
+- name: Create the .sh file to save the path
+  lineinfile:
+         dest: /etc/profile.d/sonnarscanner.sh 
+         line: |
+             PATH=$PATH:/opt/sonar-scanner/bin
+             SONAR_SCANNER_OPTS="-Xmx512m -server"
+   

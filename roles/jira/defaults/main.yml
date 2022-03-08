@@ -1,0 +1,13 @@
+---
+
+#users
+jira_user_group: jira
+jira_user: jira
+
+# Paths
+jira_installer_name:  "atlassian-jira-core-8.6.1-x64.bin"
+jira_extract: "atlassian-jira-core-8.6.1-x64.bin"
+atlassian_root: "/opt"
+jiraHomePath: "/var/atlassian/apllication-data/jira"
+
+server_baseurl: jira.example.com

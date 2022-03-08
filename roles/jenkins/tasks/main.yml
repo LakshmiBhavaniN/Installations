@@ -1,0 +1,78 @@
+---
+- name: Correct the alternatives to change default Java versions
+  command: alternatives --set java java-1.8.0-openjdk.x86_64
+    
+- name: Install python-pycurl
+  yum: name=python-pycurl state=installed
+
+- name: Create a jenkins.repo
+  file: path=/etc/yum.repos.d/jenkins.repo state=touch
+
+- name: Install jenkins repo and key
+  command: wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo
+- name: Import gpg key
+  command: rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io.key
+- name: Install Jenkins
+  yum: 
+    name: jenkins
+    state: present
+
+- name: start and enable jenkins
+  service:
+        name: jenkins
+        state: started
+        enabled: yes
+
+ #   - name: Wait for jenkins installation
+ #     wait_for: timeout=30   
+ #     delegate_to: host
+    
+- name: Configure Jenkins port
+  lineinfile: 
+        dest: /etc/sysconfig/jenkins
+        regexp: ^JENKINS_PORT=
+        line: JENKINS_PORT=9090
+  register: config_changed
+     
+- name: Configure jenkins for $JAVA_HOME
+  lineinfile: 
+         dest: /etc/sysconfig/jenkins
+         regexp: ^JENKINS_HOME=
+         line: JENKINS_HOME="/var/lib/jenkins"
+  register: config_changed
+    
+- name: Change Jenkins JAVA options
+  lineinfile: 
+          dest: /etc/sysconfig/jenkins
+          regexp: ^JENKINS_JAVA_OPTIONS=
+          line: JENKINS_JAVA_OPTIONS="-Djava.awt.headless=true -server"
+  register: config_changed
+    
+- name: Configure Jenkins Prefix
+  lineinfile: 
+       dest: /etc/sysconfig/jenkins
+       regexp: ^JENKINS_ARGS=
+       line: JENKINS_ARGS="--prefix=/jenkins"
+  register: config_changed
+ #     when: prefix is defined
+    
+- name: Add jenkins user into sudoers for sudo access
+  lineinfile: 
+        dest: /etc/sudoers
+        line: "{{ item.line }}"
+        create: yes
+        state: present
+  with_items:
+       - { line: 'jenkins ALL=(ALL) NOPASSWD: ALL' }
+       - { line: 'Defaults:jenkins !requierty' }
+- name: Restart jenkins now
+  service: name=jenkins state=restarted enabled=yes
+  when: config_changed.changed
+- name: stop and Disable Jenkins
+  systemd:
+       name: jenkins
+       state: stopped
+       enabled: no
+
+    
+

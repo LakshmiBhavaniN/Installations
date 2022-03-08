@@ -1,0 +1,13 @@
+---
+ 
+# Installer
+jira_installer_url: "https://www.atlassian.com/software/jira/downloads/binary/{{ jira_installer_name }}"
+jira_installer_fullpath: "/opt/{{ jira_extract }}"
+
+#https://www.atlassian.com/software/jira/downloads/binary/atlassian-jira-core-8.6.1-x64.bin
+# Folder
+
+
+jira_installation_folder: "{{ atlassian_root }}/atlassian" 
+jira_installer_folder: "{{ atlassian_root }}/atlassian"
+#jira_backup_folder: "{{ atlassian_root }}/jira-backup"

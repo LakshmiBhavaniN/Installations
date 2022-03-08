@@ -1,0 +1,86 @@
+---
+- name: set java 11 path 
+  command: alternatives --set java java-11-openjdk.x86_64
+
+- name: Create group 
+  group: name=sonar
+      
+- name: Create user
+  user: name=sonar shell=/bin/bash group=sonar  
+    
+- name: Modify conf to add new lines
+  blockinfile:
+       dest: /etc/sysctl.conf
+       insertafter: 'EOF'
+       block: |
+          - vm.max_map_count = 262144
+          - fs.file-max = 65536
+- name:  Add a new line to limits.conf    
+  blockinfile: 
+        dest: /etc/security/limits.conf
+        insertbefore: 'EOF'
+        block: |
+              - nexus           -   nofile  65536
+              - sonar           -   nofile  65536
+              - sonar           -   nproc   4096
+              - elasticsearch   -   nofile  65536
+              - elasticsearch   -   nproc   4096
+- name: check installation directory exist or not
+  stat: 
+     path: /opt/sonarqube-8.0
+  register: file_details     
+     
+- name: "Download and Expand SonarQube binaries"
+  unarchive:
+        src:  "{{ sonar_download_url }}"
+        dest: "{{ sonar_install_directory }}"
+        remote_src: yes
+        owner: sonar
+        group: sonar
+  when: file_details.stat.exists == false
+
+- name: Create a symlink
+  file:
+      src: "{{ sonar_base_dir }}"
+      dest: "/opt/sonarqube"
+      state: link
+- name: Create user group to sonarqube
+  command: chown -R sonar:sonar /opt/sonarqube-8.0
+- name: Create user group to sonarqube link
+  command: chown -R -h sonar:sonar /opt/sonarqube
+- name: Define connection to postgresql
+  lineinfile: 
+         dest: /opt/sonarqube/conf/sonar.properties
+         regexp: "{{ item.From }}"
+         line: "{{ item.To }}"
+  with_items: 
+          - {From: '^#sonar.jdbc.username=', To: 'sonar.jdbc.username=sonaruser'}
+          - {From: '^#sonar.jdbc.password=', To: 'sonar.jdbc.password=StDevUser'}
+          - {From: '^#sonar.web.javaAdditionalOpts=', To: 'sonar.web.javaAdditionalOpts=-server'}
+          - {From: '^#sonar.search.javaAdditionalOpts=', To: 'sonar.search.javaAdditionalsOpts=-server'}
+- name: Define url to postgres
+  blockinfile: 
+       dest: /opt/sonarqube/conf/sonar.properties
+       insertafter: 'sonar.jdbc.url=jdbc:postgresql://localhost/sonarqube?currentSchema=my_schema'      
+       block: |
+           sonar.jdbc.url=jdbc:postgresql://localhost/sonarqubedb
+
+- name: Start Sonarqube as a sonar user
+  command: /opt/sonarqube/bin/linux-x86-64/sonar.sh start
+  become_user: sonar
+- name: See the status of a sonarqube as a sonar user
+  command: /opt/sonarqube/bin/linux-x86-64/sonar.sh status 
+  become_user: sonar
+- name: Stop  sonarqube as a sonar user
+  command: /opt/sonarqube/bin/linux-x86-64/sonar.sh stop  
+  become_user: sonar
+- name: Set sonarqube to start automatically as a servicce
+  template: 
+        src: ../templates/sonar.service.j2
+        dest: /etc/systemd/system/sonarqube.service
+  register: service_change
+- name: Start and Enable sonarqube
+  service: name=sonarqube state=started enabled=yes
+
+      
+

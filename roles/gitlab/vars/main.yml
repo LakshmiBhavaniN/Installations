@@ -1,0 +1,5 @@
+gitlab_conf_dir: "/srv/gitlab/gitlab_conf"
+gitlab_logs_dir: "/srv/gitlab/gitlab_logs"
+gitlab_data_dir: "/srv/gitlab/gitlab_data"
+
+gitlab_image: "gitlab/gitlab-ee:latest"

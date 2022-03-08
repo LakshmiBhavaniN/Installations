@@ -1,0 +1,107 @@
+--- 
+- name: Download url
+  yum:
+    name: http://yum.postgresql.org/9.6/redhat/rhel-7-x86_64/pgdg-redhat96-9.6-3.noarch.rpm
+    state: present
+
+
+- name: Install PostgreSQL
+  yum: 
+    name:
+      - postgresql96
+      - postgresql96-server
+    state: present
+     
+- name: Install psycopg2 python module
+  pip: name=psycopg2-binary
+
+- name: Wait for to complete installation
+  wait_for:
+       path: /usr/pgsql-9.6/bin
+
+- name: Initialize database
+  command: /usr/pgsql-9.6/bin/postgresql96-setup initdb
+  ignore_errors: yes
+
+- name: Start postgres
+  service: name=postgresql-9.6 state=started enabled=yes
+   
+- name: Password setting
+  user: name=postgress password={{'StDevUser' | password_hash ('sha512')}} state=present 
+
+       
+- name: Alter the password
+  shell: sudo -u postgres psql -d template1 -c "ALTER USER postgres WITH PASSWORD 'StDevUser';"
+ 
+- name: Update postgresql authentication settings
+  lineinfile: 
+         dest: '/var/lib/pgsql/9.6/data/pg_hba.conf'
+         regexp: '^host    all             all             127.0.0.1/32            ident'
+         line: 'host    all             all             127.0.0.1/32            md5'
+  register: pg_hba_conf
+
+- name: configure postgresql to start automatically
+  service:
+      name: postgresql-9.6
+      enabled: yes
+
+- name: Create jiradatabase
+  remote_user: root
+  become: yes
+  become_user: postgres
+  postgresql_db:
+          name: jiradb 
+          encoding: UNICODE
+          lc_collate: C
+          lc_ctype: C
+          template: template0
+
+- name: Create sonarqubedb
+  remote_user: root
+  become: yes
+  become_user: postgres
+  postgresql_db:
+        name: sonarqubedb 
+        encoding: UTF-8
+       
+- name: Create jirauser
+  remote_user: root
+  become: yes
+  become_user: postgres
+  postgresql_user:
+           name: jiradbuser
+           password: StDevUser 
+
+  
+- name: Create sonarqubeuser
+  remote_user: root
+  become: yes
+  become_user: postgres
+  postgresql_user:
+          name: sonaruser
+          password: StDevUser
+
+    
+- name: GRANT ALL PRIVILEGES ON DATABASE jiradb TO jirauser
+  remote_user: root
+  become: yes
+  become_user: postgres
+  postgresql_privs:
+            db: jiradb
+            privs: ALL
+            type: database
+            role: jiradbuser
+
+
+- name: GRANT ALL PRIVILEGES ON DATABASE sonarqubedb TO sonaruser
+  remote_user: root
+  become: yes
+  become_user: postgres
+  postgresql_privs:
+            db: sonarqubedb
+            privs: ALL
+            type: database
+            role: sonaruser
+
+   
+          

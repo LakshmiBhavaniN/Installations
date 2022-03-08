@@ -1,0 +1,22 @@
+---
+- name: Ensure Jira installer folder exists
+  file: 
+    path: "{{ jira_installer_folder }}"
+    state: directory
+
+- name: Download Jira Installer
+  get_url:
+    url: "{{ jira_installer_url }}"
+    dest: "{{ jira_installer_fullpath }}"
+    
+    
+- name: Make Jira Installer executable
+  file:
+    path: "{{ jira_installer_fullpath }}"
+    mode: a+x
+    
+
+- name: Check if Jira folder exists
+  stat:
+    path: "{{ jira_installation_folder }}"
+  register: jiraFolder

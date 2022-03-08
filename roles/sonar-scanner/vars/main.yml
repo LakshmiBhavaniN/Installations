@@ -1,0 +1,4 @@
+workspace: /opt
+scanner_version: 4.2.0.1873
+scanner_url:  https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-{{ scanner_version }}-linux.zip
+scanner_dir: /opt/sonar-scanner-{{ scanner_version }}-linux

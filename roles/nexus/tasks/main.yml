@@ -1,0 +1,62 @@
+---
+- name: Set JDK 8 as a default alternative
+  command: alternatives --set java java-1.8.0-openjdk.x86_64
+    
+- name: create nexus group
+  group: name=nexus 
+  
+- name: create nexus user
+  user: name=nexus group=nexus 
+   
+- name: Download and unarchive nexus
+  unarchive:
+         src: "{{ nexus_url }}"
+         dest: "{{ nexus_installation_dir }}"
+         remote_src: yes
+         owner: nexus
+         group: nexus
+               
+
+- name: Update symlink nexus-latest
+  shell: ln -fs `ls -d {{ nexus_installation_dir }}/nexus-*|tail -1` {{ nexus_installation_dir }}/nexus
+      
+    
+- name: change user group
+  command:  chown -R nexus:nexus -h /opt/nexus   
+    
+- name: change user group to sonatype
+  command:  chown -R nexus:nexus /opt/sonatype-work
+        
+- name: Run nexus as service
+  lineinfile: 
+           dest: "{{ nexus_installation_dir }}/nexus/bin/nexus.rc"
+           regexp: ^run_as_user= 
+           line: run_as_user="nexus" 
+  register: config_changed
+
+- name: Modify nexus to use jre8
+  lineinfile: 
+          dest: "{{ nexus_installation_dir }}/nexus/bin/nexus"
+          regexp: ^INSTALL4J_JAVA_HOME_OVERRID=  
+          line: INSTALL4J_JAVA_HOME_OVERRIDE="/usr/lib/jvm/jre-1.8.0-openjdk" 
+  register: config_changed
+
+- name: Modify nexus to use java8
+  lineinfile: 
+           dest: "{{ nexus_installation_dir }}/nexus/bin/nexus"
+           regexp: ^INSTALL4J_ADD_VM_PARAMS= 
+           line: INSTALL4J_ADD_VM_PARAMS=-server
+  register: config_changed
+
+- name: Create symbolic links 
+  file: src={{ nexus_installation_dir }}/nexus/bin/nexus dest=/etc/init.d/nexus state=link owner=nexus group=nexus 
+    
+- name: change user group
+  command:  chown -R nexus:nexus -h  /etc/init.d/nexus
+    
+- name: add nexus
+  command: chkconfig --add nexus
+    
+- name: Start and enable nexus
+  service: name=nexus state=started enabled=yes
+   

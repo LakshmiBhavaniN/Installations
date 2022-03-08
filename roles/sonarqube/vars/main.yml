@@ -1,0 +1,5 @@
+sonarsource_url: "https://binaries.sonarsource.com/Distribution"
+sonar_archive: "sonarqube-8.0.zip"
+sonar_download_url: "{{ sonarsource_url }}/sonarqube/{{ sonar_archive }}"
+sonar_install_directory: /opt
+sonar_base_dir: "{{ sonar_install_directory }}/sonarqube-8.0" 
